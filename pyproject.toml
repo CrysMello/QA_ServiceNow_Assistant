@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qa-servicenow-assistant"
+version = "0.1.0"
+description = "CLI application that automates ServiceNow Test Management artifact creation from a spreadsheet and a Knowledge Base produced by the ServiceNow Knowledge Builder."
+requires-python = ">=3.11"
+dependencies = [
+    "playwright",
+    "pandas",
+    "openpyxl",
+    "loguru",
+    "typer",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

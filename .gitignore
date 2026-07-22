@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Generated runtime artifacts (directories are tracked via .gitkeep, contents are not)
+logs/*
+!logs/.gitkeep
+reports/*
+!reports/.gitkeep
+screenshots/*
+!screenshots/.gitkeep
+temp/*
+!temp/.gitkeep
+
+# Local configuration overrides
+config/*.local.*
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
