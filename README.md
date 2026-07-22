@@ -13,8 +13,28 @@ Decision Records (ADRs) do projeto — ver `docs/adr/`.
 Estrutura de diretórios oficial: ADR-0011.
 Papel do Event Bus: ADR-0012 (mecanismo complementar; o Workflow Engine permanece
 o orquestrador principal via chamadas diretas por portas).
+Sequência oficial de implementação (com Log Engine incluído): ADR-0013.
+
+## Sequência oficial de implementação
+
+```
+Prompt 0  Planejamento
+Prompt 1  Arquitetura Inicial            [concluído]
+Prompt 2  Configuration Manager          [concluído]
+Prompt 3  Log Engine                     [concluído]
+Prompt 4  Event Bus                      [próximo]
+...
+```
 
 ## Status
 
-Scaffolding inicial (Prompt 1 da sequência oficial de implementação). Nenhuma regra
-de negócio foi implementada ainda.
+Configuration Manager e Log Engine implementados e testados (50 testes
+unitários e de integração). Demais módulos ainda não implementados.
+
+## Testes
+
+```
+pytest
+```
+
+Não requer instalação do pacote: `pyproject.toml` configura `pythonpath = ["src"]`.

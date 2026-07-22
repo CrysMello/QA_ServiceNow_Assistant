@@ -39,10 +39,17 @@ class NavigationConfiguration:
 
 @dataclass(frozen=True)
 class LoggingConfiguration:
-    """Logging level and destination (SAD 21.3 - categoria Logs)."""
+    """Logging level, destination, rotation, retention and masking
+    (SAD 21.3 - categoria Logs; SAD Cap. 24; ADR-0013 - Log Engine)."""
 
     level: str = "INFO"
     directory: Path = Path("logs")
+    file_name: str = "qa_servicenow_assistant.log"
+    rotation: str = "10 MB"
+    retention: str = "30 days"
+    console_enabled: bool = True
+    file_enabled: bool = True
+    mask_sensitive_data: bool = True
 
 
 @dataclass(frozen=True)

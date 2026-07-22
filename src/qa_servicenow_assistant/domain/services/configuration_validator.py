@@ -95,9 +95,20 @@ class ConfigurationValidator:
             raise InvalidConfigurationValueError("navigation.timeout_ms must be positive")
 
     def _validate_logging(self, configuration: ApplicationConfiguration) -> None:
-        if configuration.logging.level not in _ALLOWED_LOG_LEVELS:
+        logging_cfg = configuration.logging
+        if logging_cfg.level not in _ALLOWED_LOG_LEVELS:
             raise InvalidConfigurationValueError(
                 f"logging.level must be one of {sorted(_ALLOWED_LOG_LEVELS)}"
+            )
+        if not logging_cfg.file_name.strip():
+            raise InvalidConfigurationValueError("logging.file_name must not be empty")
+        if not logging_cfg.rotation.strip():
+            raise InvalidConfigurationValueError("logging.rotation must not be empty")
+        if not logging_cfg.retention.strip():
+            raise InvalidConfigurationValueError("logging.retention must not be empty")
+        if not logging_cfg.console_enabled and not logging_cfg.file_enabled:
+            raise InvalidConfigurationValueError(
+                "logging must have at least one sink enabled (console_enabled or file_enabled)"
             )
 
     def _validate_reporting(self, configuration: ApplicationConfiguration) -> None:

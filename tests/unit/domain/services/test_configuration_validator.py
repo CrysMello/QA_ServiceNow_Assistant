@@ -146,6 +146,45 @@ def test_unknown_log_level_raises(
         validator.validate(configuration)
 
 
+def test_empty_log_file_name_raises(
+    validator: ConfigurationValidator, valid_configuration: ApplicationConfiguration
+) -> None:
+    configuration = _replace(valid_configuration, logging=LoggingConfiguration(file_name="  "))
+
+    with pytest.raises(InvalidConfigurationValueError, match="file_name"):
+        validator.validate(configuration)
+
+
+def test_empty_log_rotation_raises(
+    validator: ConfigurationValidator, valid_configuration: ApplicationConfiguration
+) -> None:
+    configuration = _replace(valid_configuration, logging=LoggingConfiguration(rotation=""))
+
+    with pytest.raises(InvalidConfigurationValueError, match="rotation"):
+        validator.validate(configuration)
+
+
+def test_empty_log_retention_raises(
+    validator: ConfigurationValidator, valid_configuration: ApplicationConfiguration
+) -> None:
+    configuration = _replace(valid_configuration, logging=LoggingConfiguration(retention=""))
+
+    with pytest.raises(InvalidConfigurationValueError, match="retention"):
+        validator.validate(configuration)
+
+
+def test_all_log_sinks_disabled_raises(
+    validator: ConfigurationValidator, valid_configuration: ApplicationConfiguration
+) -> None:
+    configuration = _replace(
+        valid_configuration,
+        logging=LoggingConfiguration(console_enabled=False, file_enabled=False),
+    )
+
+    with pytest.raises(InvalidConfigurationValueError, match="at least one sink"):
+        validator.validate(configuration)
+
+
 def test_unsupported_report_format_raises(
     validator: ConfigurationValidator, valid_configuration: ApplicationConfiguration
 ) -> None:

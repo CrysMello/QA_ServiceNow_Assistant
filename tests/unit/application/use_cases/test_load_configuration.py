@@ -35,14 +35,24 @@ class FakeConfigurationRepository(ConfigurationRepository):
 class FakeLogPort(LogPort):
     """Test double for LogPort recording every call for assertions."""
 
-    def __init__(self) -> None:
+    def __init__(self, bound_context: dict[str, Any] | None = None) -> None:
         self.info_calls: list[tuple[str, dict[str, Any]]] = []
+        self._bound_context = dict(bound_context or {})
+
+    def bind(self, **context: Any) -> "FakeLogPort":
+        return FakeLogPort(bound_context={**self._bound_context, **context})
+
+    def trace(self, message: str, **context: Any) -> None:
+        pass
 
     def debug(self, message: str, **context: Any) -> None:
         pass
 
     def info(self, message: str, **context: Any) -> None:
-        self.info_calls.append((message, context))
+        self.info_calls.append((message, {**self._bound_context, **context}))
+
+    def critical(self, message: str, **context: Any) -> None:
+        pass
 
     def warning(self, message: str, **context: Any) -> None:
         pass
