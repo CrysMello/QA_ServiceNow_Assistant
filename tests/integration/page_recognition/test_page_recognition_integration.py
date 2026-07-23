@@ -77,13 +77,35 @@ class RecordingLogPort(LogPort):
 
 
 class InTestKnowledgeRepository(KnowledgeRepository):
-    """Stand-in for the future Knowledge Manager adapter (Prompt 18)."""
+    """Stand-in predating the real Knowledge Manager adapter
+    (JsonKnowledgeRepository, Prompt 18) - kept here since these tests
+    only need get_known_pages(); the other KnowledgeRepository methods
+    are trivial stand-ins so this class still satisfies the (now larger)
+    ABC."""
 
     def __init__(self, pages: Sequence[KnowledgePage]) -> None:
         self._pages = pages
 
     def get_known_pages(self) -> Sequence[KnowledgePage]:
         return self._pages
+
+    def get_page(self, key: str):
+        return None
+
+    def get_element(self, key: str):
+        return None
+
+    def get_selector(self, element_key: str):
+        return None
+
+    def get_workflow(self, key: str):
+        return None
+
+    def get_fingerprint(self, page_key: str):
+        return None
+
+    def validate_version(self) -> bool:
+        return True
 
 
 def test_navigation_engine_recognizes_real_page_via_page_recognition() -> None:

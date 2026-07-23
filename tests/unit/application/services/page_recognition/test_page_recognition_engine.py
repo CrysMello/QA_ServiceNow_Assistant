@@ -18,6 +18,11 @@ from qa_servicenow_assistant.domain.value_objects.browser_snapshot import (
 
 
 class FakeKnowledgeRepository(KnowledgeRepository):
+    """Only get_known_pages() is exercised by these tests - the other
+    KnowledgeRepository methods (added by Knowledge Manager, Prompt 18)
+    are trivial stand-ins, same precedent as FakeLogPort adopting
+    trace/critical/bind when LogPort grew those methods (ADR-0013)."""
+
     def __init__(self, pages: Sequence[KnowledgePage] = ()) -> None:
         self._pages = pages
         self.call_count = 0
@@ -25,6 +30,24 @@ class FakeKnowledgeRepository(KnowledgeRepository):
     def get_known_pages(self) -> Sequence[KnowledgePage]:
         self.call_count += 1
         return self._pages
+
+    def get_page(self, key: str):
+        return None
+
+    def get_element(self, key: str):
+        return None
+
+    def get_selector(self, element_key: str):
+        return None
+
+    def get_workflow(self, key: str):
+        return None
+
+    def get_fingerprint(self, page_key: str):
+        return None
+
+    def validate_version(self) -> bool:
+        return True
 
 
 class FakeLogPort(LogPort):

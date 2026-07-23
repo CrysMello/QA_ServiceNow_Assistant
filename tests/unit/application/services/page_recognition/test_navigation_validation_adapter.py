@@ -27,11 +27,33 @@ from qa_servicenow_assistant.domain.value_objects.page_identifier import (
 
 
 class FakeKnowledgeRepository(KnowledgeRepository):
+    """Only get_known_pages() is exercised by these tests - the other
+    KnowledgeRepository methods (added by Knowledge Manager, Prompt 18)
+    are trivial stand-ins."""
+
     def __init__(self, pages: Sequence[KnowledgePage]) -> None:
         self._pages = pages
 
     def get_known_pages(self) -> Sequence[KnowledgePage]:
         return self._pages
+
+    def get_page(self, key: str):
+        return None
+
+    def get_element(self, key: str):
+        return None
+
+    def get_selector(self, element_key: str):
+        return None
+
+    def get_workflow(self, key: str):
+        return None
+
+    def get_fingerprint(self, page_key: str):
+        return None
+
+    def validate_version(self) -> bool:
+        return True
 
 
 class FakeBrowserDataCollector(BrowserDataCollectorPort):
