@@ -16,6 +16,7 @@ from qa_servicenow_assistant.domain.services.configuration_validator import (
 from qa_servicenow_assistant.domain.value_objects.configuration import (
     ApplicationConfiguration,
     BrowserConfiguration,
+    ExportConfiguration,
     LoggingConfiguration,
     ReportingConfiguration,
     RetryConfiguration,
@@ -208,6 +209,15 @@ def test_unsupported_report_format_raises(
     configuration = _replace(valid_configuration, reporting=ReportingConfiguration(format="pdf"))
 
     with pytest.raises(InvalidConfigurationValueError, match="reporting.format"):
+        validator.validate(configuration)
+
+
+def test_unsupported_export_format_raises(
+    validator: ConfigurationValidator, valid_configuration: ApplicationConfiguration
+) -> None:
+    configuration = _replace(valid_configuration, export=ExportConfiguration(archive_format="tar"))
+
+    with pytest.raises(InvalidConfigurationValueError, match="export.archive_format"):
         validator.validate(configuration)
 
 

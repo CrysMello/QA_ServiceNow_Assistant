@@ -87,6 +87,17 @@ class CheckpointConfiguration:
 
 
 @dataclass(frozen=True)
+class ExportConfiguration:
+    """Export Engine output parameters. Not part of SAD 21.3's category
+    table - Export Engine has no dedicated SAD chapter at all (see
+    ADR-0014). archive_format is restricted to {"zip"}, the only format
+    ADR-0014 scoped for local artifact packaging."""
+
+    directory: Path = Path("exports")
+    archive_format: str = "zip"
+
+
+@dataclass(frozen=True)
 class ApplicationConfiguration:
     """Aggregate, immutable configuration for a single execution.
 
@@ -104,3 +115,4 @@ class ApplicationConfiguration:
     screenshots: ScreenshotConfiguration = field(default_factory=ScreenshotConfiguration)
     reporting: ReportingConfiguration = field(default_factory=ReportingConfiguration)
     checkpoints: CheckpointConfiguration = field(default_factory=CheckpointConfiguration)
+    export: ExportConfiguration = field(default_factory=ExportConfiguration)

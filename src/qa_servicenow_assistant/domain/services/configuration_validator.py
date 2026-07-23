@@ -22,6 +22,7 @@ _ALLOWED_BACKOFF_STRATEGIES = frozenset({"none", "fixed", "linear", "exponential
 _ALLOWED_LOG_LEVELS = frozenset({"TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 _ALLOWED_REPORT_FORMATS = frozenset({"html", "json"})
 _ALLOWED_BROWSER_TYPES = frozenset({"chromium", "msedge"})
+_ALLOWED_EXPORT_FORMATS = frozenset({"zip"})
 
 
 class ConfigurationValidator:
@@ -35,6 +36,7 @@ class ConfigurationValidator:
         self._validate_navigation(configuration)
         self._validate_logging(configuration)
         self._validate_reporting(configuration)
+        self._validate_export(configuration)
 
     def _validate_required_paths(self, configuration: ApplicationConfiguration) -> None:
         spreadsheet_path = configuration.spreadsheet_path
@@ -120,4 +122,10 @@ class ConfigurationValidator:
         if configuration.reporting.format not in _ALLOWED_REPORT_FORMATS:
             raise InvalidConfigurationValueError(
                 f"reporting.format must be one of {sorted(_ALLOWED_REPORT_FORMATS)}"
+            )
+
+    def _validate_export(self, configuration: ApplicationConfiguration) -> None:
+        if configuration.export.archive_format not in _ALLOWED_EXPORT_FORMATS:
+            raise InvalidConfigurationValueError(
+                f"export.archive_format must be one of {sorted(_ALLOWED_EXPORT_FORMATS)}"
             )
