@@ -18,10 +18,46 @@ class FrameError(QaServiceNowAssistantError):
 
 
 class FrameNotFoundError(FrameError):
-    """Raised when no frame matches the requested criteria, or a
-    previously resolved frame is no longer available (SAD 18.6 - "frame
-    removido dinamicamente")."""
+    """Raised when: (a) no main frame is available and no criteria were
+    given; or (b) a previously resolved frame descriptor no longer
+    matches any live frame at handle-selection time (SAD 18.6 - "frame
+    removido dinamicamente").
+
+    Note (behavior confirmed in this correction): when frame_name or
+    url_pattern is given to FrameResolutionEngine.resolve(), a frame that
+    never appears no longer raises this exception immediately - the
+    engine waits (condition-based, RNF-010) up to timeout_ms first, and
+    raises FrameTimeoutError if nothing matches by then. FrameNotFoundError
+    for that path would mean giving up without waiting at all, which is
+    exactly what correction 2 removes.
+    """
 
 
 class AmbiguousFrameError(FrameError):
     """Raised when more than one frame matches the requested criteria."""
+
+
+class FrameDetectionError(FrameError):
+    """Raised when a Playwright infrastructure failure (not a "not
+    found" or "timeout" outcome) occurs while listing frames or waiting
+    for a matching frame to appear - e.g. the page/browser communication
+    itself fails. Always chains the original Playwright exception via
+    `raise ... from error`.
+    """
+
+
+class FrameAccessError(FrameError):
+    """Raised when a Playwright infrastructure failure occurs while
+    reading a live frame's properties or obtaining its handle during
+    selection (select_frame). Always chains the original Playwright
+    exception via `raise ... from error`.
+    """
+
+
+class FrameTimeoutError(FrameError):
+    """Raised when waiting for a frame matching the requested criteria
+    exceeds the configured timeout_ms (RNF-010 - sincronizacao baseada em
+    condicoes, nao espera fixa). Never a silent fallback to the main
+    frame: an explicit frame_name/url_pattern criterion that never
+    matches always surfaces as this exception.
+    """

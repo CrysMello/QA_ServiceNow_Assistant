@@ -1,13 +1,23 @@
 """Integration test chaining Browser Manager, Frame Resolver, Browser Data
-Collector and Page Recognition with a real Chromium browser and a real
-iframe - proving the resolved frame handle can be used directly wherever
-a "page" is expected (SAD 9.7 opaque contract), since Playwright's Frame
-exposes the same url/title/content/evaluate surface as Page.
+Collector and Page Recognition with a real Chromium browser and a real,
+DELAYED iframe - proving Frame Resolver's own condition-based wait
+mechanism (RNF-010), not any fixed sleep, is what makes resolution work.
+
+No test in this file uses page.wait_for_timeout() or time.sleep() to
+paper over frame-loading timing. The iframe is injected via a browser-side
+setTimeout (page.evaluate() returns immediately; the callback fires later,
+inside the browser, independently of Python), and
+FrameResolutionEngine.resolve() is what blocks - synchronously, via
+Playwright's native "framenavigated" event - until the frame actually
+appears or the timeout elapses.
 """
 
 from __future__ import annotations
 
+import time
 from typing import Any, Sequence
+
+import pytest
 
 from qa_servicenow_assistant.application.ports.knowledge_repository_port import (
     KnowledgeRepository,
@@ -20,7 +30,7 @@ from qa_servicenow_assistant.application.services.page_recognition.page_recognit
     PageRecognitionEngine,
 )
 from qa_servicenow_assistant.domain.entities.knowledge_page import KnowledgePage
-from qa_servicenow_assistant.domain.exceptions.frame import FrameNotFoundError
+from qa_servicenow_assistant.domain.exceptions.frame import FrameTimeoutError
 from qa_servicenow_assistant.domain.value_objects.configuration import (
     BrowserConfiguration,
 )
@@ -37,11 +47,17 @@ from qa_servicenow_assistant.infrastructure.event_bus.in_memory_event_bus import
     InMemoryEventBus,
 )
 
-_MAIN_PAGE_HTML = """
-<html><body>
-    <h1>Main Page</h1>
-    <iframe name="content_frame" srcdoc="&lt;html&gt;&lt;body&gt;&lt;button id=&quot;inner-btn&quot; data-testid=&quot;inner-submit&quot;&gt;Inner Submit&lt;/button&gt;&lt;/body&gt;&lt;/html&gt;"></iframe>
-</body></html>
+_MAIN_PAGE_HTML = "<html><body><h1>Main Page</h1></body></html>"
+
+_INJECT_DELAYED_IFRAME_SCRIPT = """
+() => {
+    setTimeout(() => {
+        const iframe = document.createElement('iframe');
+        iframe.name = 'content_frame';
+        iframe.srcdoc = '<html><body><button id="inner-btn" data-testid="inner-submit">Inner Submit</button></body></html>';
+        document.body.appendChild(iframe);
+    }, 300);
+}
 """
 
 
@@ -79,7 +95,7 @@ class InTestKnowledgeRepository(KnowledgeRepository):
         return self._pages
 
 
-def test_resolved_frame_can_be_collected_and_recognized() -> None:
+def test_resolve_waits_for_a_frame_that_appears_after_a_delay_and_then_collects_it() -> None:
     log_port = RecordingLogPort()
     browser_manager = PlaywrightBrowserManager(BrowserConfiguration(), log_port)
     frame_engine = FrameResolutionEngine(PlaywrightFrameDetector(), log_port)
@@ -93,13 +109,25 @@ def test_resolved_frame_can_be_collected_and_recognized() -> None:
     try:
         page = browser_manager.new_page()
         page.set_content(_MAIN_PAGE_HTML)
-        page.wait_for_timeout(200)
+        # Schedules the iframe ~300ms in the future, browser-side. This
+        # call returns immediately - it does NOT block for 300ms.
+        page.evaluate(_INJECT_DELAYED_IFRAME_SCRIPT)
 
-        frame_handle = frame_engine.resolve(page, frame_name="content_frame")
+        started_at = time.monotonic()
+        # The iframe does not exist yet at this point. resolve() must
+        # block via condition-based waiting until it appears.
+        frame_handle = frame_engine.resolve(page, frame_name="content_frame", timeout_ms=5_000)
+        elapsed_ms = (time.monotonic() - started_at) * 1000
+
         snapshot = collector.collect(frame_handle)
         recognition_result = recognition_engine.recognize(snapshot)
     finally:
         browser_manager.stop()
+
+    # Proves this was a condition-based wait, not a full/fixed wait: it
+    # returned close to the ~300ms the iframe actually took to appear,
+    # nowhere near the 5000ms timeout budget.
+    assert elapsed_ms < 2_000
 
     assert any(element.attributes.get("data_testid") == "inner-submit" for element in snapshot.elements)
     assert recognition_result.is_recognized is True
@@ -107,7 +135,7 @@ def test_resolved_frame_can_be_collected_and_recognized() -> None:
     assert "Frame resolved" in log_port.messages
 
 
-def test_resolving_unknown_frame_name_raises_and_is_logged() -> None:
+def test_resolving_a_frame_name_that_never_appears_times_out_without_fallback() -> None:
     log_port = RecordingLogPort()
     browser_manager = PlaywrightBrowserManager(BrowserConfiguration(), log_port)
     frame_engine = FrameResolutionEngine(PlaywrightFrameDetector(), log_port)
@@ -116,15 +144,12 @@ def test_resolving_unknown_frame_name_raises_and_is_logged() -> None:
     try:
         page = browser_manager.new_page()
         page.set_content(_MAIN_PAGE_HTML)
-        page.wait_for_timeout(200)
+        # No iframe is ever injected.
 
-        try:
-            frame_engine.resolve(page, frame_name="does_not_exist")
-            raised = False
-        except FrameNotFoundError:
-            raised = True
+        with pytest.raises(FrameTimeoutError):
+            frame_engine.resolve(page, frame_name="does_not_exist", timeout_ms=800)
     finally:
         browser_manager.stop()
 
-    assert raised is True
-    assert "Frame resolution failed" in log_port.messages
+    assert "Frame resolution failed" not in log_port.messages  # failed earlier, at detection
+    assert "Frame detection failed" in log_port.messages
