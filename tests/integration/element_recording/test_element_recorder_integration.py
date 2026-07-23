@@ -73,7 +73,12 @@ def test_elements_collected_from_real_page_can_be_recorded() -> None:
         page.set_content(_SAMPLE_PAGE_HTML)
         snapshot = collector.collect(page)
 
-        recorded = recorder.record_many(snapshot.elements, label="observed", page_url=snapshot.url)
+        recorded = recorder.record_many(
+            snapshot.elements,
+            execution_id="integration-test-exec",
+            label="observed",
+            page_url=snapshot.url,
+        )
     finally:
         browser_manager.stop()
 
