@@ -16,3 +16,7 @@ class BrowserLaunchError(BrowserError):
 class BrowserNotStartedError(BrowserError):
     """Raised when an operation requires a running browser that was not
     started (or was already stopped)."""
+
+
+class BrowserDataCollectionError(BrowserError):
+    """Raised when collecting URL/DOM/element data from a page fails."""
