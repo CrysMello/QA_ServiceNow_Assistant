@@ -17,6 +17,8 @@ from qa_servicenow_assistant.domain.services.configuration_validator import (
 from qa_servicenow_assistant.domain.value_objects.configuration import (
     ApplicationConfiguration,
     BrowserConfiguration,
+    CheckpointConfiguration,
+    ExportConfiguration,
     LoggingConfiguration,
     NavigationConfiguration,
     ReportingConfiguration,
@@ -94,6 +96,8 @@ def _build_configuration(
     logging_cfg = _merge(LoggingConfiguration(), raw_data.get("logging", {}), overrides.get("logging", {}))
     screenshots = _merge(ScreenshotConfiguration(), raw_data.get("screenshots", {}))
     reporting = _merge(ReportingConfiguration(), raw_data.get("reporting", {}))
+    checkpoints = _merge(CheckpointConfiguration(), raw_data.get("checkpoints", {}))
+    export = _merge(ExportConfiguration(), raw_data.get("export", {}))
 
     instance_url = overrides.get("instance_url", request.instance_url)
 
@@ -107,6 +111,8 @@ def _build_configuration(
         logging=logging_cfg,
         screenshots=screenshots,
         reporting=reporting,
+        checkpoints=checkpoints,
+        export=export,
     )
 
 

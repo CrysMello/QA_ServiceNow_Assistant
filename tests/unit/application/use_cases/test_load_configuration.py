@@ -112,6 +112,31 @@ def test_execute_merges_config_file_values(
     assert repository.requested_paths == [config_file]
 
 
+def test_execute_merges_checkpoints_and_export_config_file_values(
+    valid_request: LoadConfigurationRequest, tmp_path: Path
+) -> None:
+    repository = FakeConfigurationRepository(
+        data={
+            "checkpoints": {"directory": str(tmp_path / "custom_checkpoints")},
+            "export": {"directory": str(tmp_path / "custom_exports")},
+        }
+    )
+    log_port = FakeLogPort()
+    config_file = tmp_path / "config.json"
+    request = LoadConfigurationRequest(
+        spreadsheet_path=valid_request.spreadsheet_path,
+        knowledge_base_path=valid_request.knowledge_base_path,
+        instance_url=valid_request.instance_url,
+        config_file_path=config_file,
+    )
+    use_case = LoadConfigurationUseCase(repository, log_port)
+
+    configuration = use_case.execute(request)
+
+    assert str(configuration.checkpoints.directory) == str(tmp_path / "custom_checkpoints")
+    assert str(configuration.export.directory) == str(tmp_path / "custom_exports")
+
+
 def test_environment_override_takes_precedence_over_config_file(
     valid_request: LoadConfigurationRequest, monkeypatch: pytest.MonkeyPatch
 ) -> None:
