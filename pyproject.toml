@@ -20,6 +20,9 @@ dev = [
     "pytest",
 ]
 
+[project.scripts]
+qa-servicenow-assistant = "qa_servicenow_assistant.cli.main:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
