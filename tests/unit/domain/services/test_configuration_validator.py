@@ -117,6 +117,23 @@ def test_non_positive_browser_timeout_raises(
         validator.validate(configuration)
 
 
+def test_msedge_browser_type_is_valid(
+    validator: ConfigurationValidator, valid_configuration: ApplicationConfiguration
+) -> None:
+    configuration = _replace(valid_configuration, browser=BrowserConfiguration(browser_type="msedge"))
+
+    validator.validate(configuration)  # must not raise
+
+
+def test_unsupported_browser_type_raises(
+    validator: ConfigurationValidator, valid_configuration: ApplicationConfiguration
+) -> None:
+    configuration = _replace(valid_configuration, browser=BrowserConfiguration(browser_type="firefox"))
+
+    with pytest.raises(InvalidConfigurationValueError, match="browser_type"):
+        validator.validate(configuration)
+
+
 def test_retry_max_attempts_below_minimum_raises(
     validator: ConfigurationValidator, valid_configuration: ApplicationConfiguration
 ) -> None:

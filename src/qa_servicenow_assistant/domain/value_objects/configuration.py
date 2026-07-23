@@ -13,12 +13,19 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class BrowserConfiguration:
-    """Browser automation parameters (SAD 21.3 - categoria Browser)."""
+    """Browser automation parameters (SAD 21.3 - categoria Browser).
+
+    browser_type is restricted to {"chromium", "msedge"}, matching RNF-008
+    (SRS): "O MVP deve suportar Windows 11 e navegador Chromium ou Edge
+    compativel com Playwright." Both are launched through Playwright's
+    chromium browser type; "msedge" selects the msedge channel.
+    """
 
     headless: bool = True
     timeout_ms: int = 30_000
     viewport_width: int = 1920
     viewport_height: int = 1080
+    browser_type: str = "chromium"
 
 
 @dataclass(frozen=True)

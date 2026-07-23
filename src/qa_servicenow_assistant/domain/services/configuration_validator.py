@@ -21,6 +21,7 @@ from qa_servicenow_assistant.domain.value_objects.configuration import (
 _ALLOWED_BACKOFF_STRATEGIES = frozenset({"none", "fixed", "linear", "exponential"})
 _ALLOWED_LOG_LEVELS = frozenset({"TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 _ALLOWED_REPORT_FORMATS = frozenset({"html", "json"})
+_ALLOWED_BROWSER_TYPES = frozenset({"chromium", "msedge"})
 
 
 class ConfigurationValidator:
@@ -77,6 +78,10 @@ class ConfigurationValidator:
         if browser.viewport_width <= 0 or browser.viewport_height <= 0:
             raise InvalidConfigurationValueError(
                 "browser viewport dimensions must be positive"
+            )
+        if browser.browser_type not in _ALLOWED_BROWSER_TYPES:
+            raise InvalidConfigurationValueError(
+                f"browser.browser_type must be one of {sorted(_ALLOWED_BROWSER_TYPES)}"
             )
 
     def _validate_retry(self, configuration: ApplicationConfiguration) -> None:
