@@ -15,18 +15,27 @@ support both natively (empirically verified against a real <select
 multiple> and <input type="file" multiple>), so no extra branching is
 needed here beyond widening the type.
 
-Every raised exception embeds operation, selector (value + strategy) and
-timeout_ms directly in its message (correction: "contexto suficiente
-para retry externo") - this is what actually reaches an external Retry
-Engine's RetryAttempt.error_message/logs (which only ever capture
-str(error), never structured exception attributes - the same convention
-every other exception in this codebase already follows), so enriching
-the message itself, rather than adding unused structured fields, is what
-makes that context available where it is actually consumed.
+upload_file validates every path locally (non-empty, points to an
+existing file) BEFORE calling Playwright at all, raising
+InvalidUploadFileError - a missing/nonexistent file is never fixed by
+retrying the same call, so failing fast here avoids both a confusing
+Playwright-side error and wasted Retry Engine attempts (post-Prompt 20
+correction review).
+
+Every raised exception embeds operation/selector/timeout_ms as
+predictable `key=value` pairs in its message (correction: "contexto
+suficiente para retry externo") - this is what actually reaches an
+external Retry Engine's RetryAttempt.error_message/logs (which only ever
+capture str(error), never structured exception attributes - the same
+convention every other exception in this codebase already follows), so
+enriching the message itself, in a predictable format, rather than
+adding unused structured fields or leaving free-form text, is what makes
+that context available and parseable where it is actually consumed.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Callable, Sequence, Union
 
 from playwright.sync_api import Error as PlaywrightError
@@ -38,6 +47,7 @@ from qa_servicenow_assistant.application.ports.automation_executor_port import (
 from qa_servicenow_assistant.domain.exceptions.automation import (
     AutomationCommunicationError,
     ElementNotActionableError,
+    InvalidUploadFileError,
 )
 from qa_servicenow_assistant.domain.value_objects.selector import Selector
 
@@ -79,6 +89,7 @@ class PlaywrightAutomationExecutor(AutomationExecutorPort):
         )
 
     def upload_file(self, page: Any, selector: Selector, file_path: _OneOrMany, *, timeout_ms: int) -> None:
+        self._validate_upload_paths(file_path)
         self._act(
             "upload_file", page, selector, timeout_ms,
             lambda locator: locator.set_input_files(file_path, timeout=timeout_ms),
@@ -99,6 +110,24 @@ class PlaywrightAutomationExecutor(AutomationExecutorPort):
             lambda locator: locator.wait_for(timeout=timeout_ms),
         )
 
+    def _validate_upload_paths(self, file_path: _OneOrMany) -> None:
+        if file_path is None:
+            raise InvalidUploadFileError("operation=upload_file file_path=<missing>: no path provided")
+
+        paths = [file_path] if isinstance(file_path, str) else list(file_path)
+        if not paths:
+            raise InvalidUploadFileError("operation=upload_file file_path=<empty>: no path provided")
+
+        for path in paths:
+            if not path:
+                raise InvalidUploadFileError(
+                    "operation=upload_file file_path=<empty>: empty path provided"
+                )
+            if not Path(path).is_file():
+                raise InvalidUploadFileError(
+                    f'operation=upload_file file_path="{path}": file not found'
+                )
+
     def _act(
         self,
         operation: str,
@@ -112,11 +141,11 @@ class PlaywrightAutomationExecutor(AutomationExecutorPort):
             action(locator)
         except PlaywrightTimeoutError as error:
             raise ElementNotActionableError(
-                f"[{operation}] element '{selector.value}' (strategy={selector.strategy}) "
-                f"was not actionable within {timeout_ms}ms: {error}"
+                f'operation={operation} selector="{selector.value}" strategy={selector.strategy} '
+                f"timeout_ms={timeout_ms}: {error}"
             ) from error
         except PlaywrightError as error:
             raise AutomationCommunicationError(
-                f"[{operation}] failed to act on element '{selector.value}' "
-                f"(strategy={selector.strategy}, timeout_ms={timeout_ms}): {error}"
+                f'operation={operation} selector="{selector.value}" strategy={selector.strategy} '
+                f"timeout_ms={timeout_ms}: {error}"
             ) from error

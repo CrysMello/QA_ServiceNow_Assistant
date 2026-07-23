@@ -6,6 +6,7 @@ from qa_servicenow_assistant.domain.exceptions.automation import (
     AutomationCommunicationError,
     AutomationError,
     ElementNotActionableError,
+    InvalidUploadFileError,
 )
 from qa_servicenow_assistant.domain.exceptions.browser import (
     BrowserDataCollectionError,
@@ -66,12 +67,41 @@ def test_ambiguous_frame_error_is_permanent_despite_being_a_frame_error() -> Non
     assert classifier.classify(AmbiguousFrameError("x")) == FailureClassification.PERMANENT
 
 
-def test_automation_errors_are_transient() -> None:
+def test_element_not_actionable_error_is_transient() -> None:
     classifier = FailureClassifier()
 
-    assert classifier.classify(AutomationError("x")) == FailureClassification.TRANSIENT
     assert classifier.classify(ElementNotActionableError("x")) == FailureClassification.TRANSIENT
-    assert classifier.classify(AutomationCommunicationError("x")) == FailureClassification.TRANSIENT
+
+
+def test_automation_communication_error_is_permanent_by_default() -> None:
+    """Bundles genuinely permanent causes (malformed selector, wrong
+    element type) with possibly-transient ones (lost session) that
+    Playwright's generic Error class does not let us tell apart - the
+    safe default (PERMANENT) applies until this bucket can be split
+    using a reliable signal."""
+    classifier = FailureClassifier()
+
+    assert classifier.classify(AutomationCommunicationError("x")) == FailureClassification.PERMANENT
+
+
+def test_invalid_upload_file_error_is_permanent() -> None:
+    classifier = FailureClassifier()
+
+    assert classifier.classify(InvalidUploadFileError("x")) == FailureClassification.PERMANENT
+
+
+def test_automation_error_base_defaults_to_permanent_not_transient() -> None:
+    """Regression test for the corrected design: AutomationError itself
+    must NOT be registered TRANSIENT, otherwise every future/unregistered
+    Automation Engine exception would default to TRANSIENT via MRO,
+    inverting this classifier's safe-by-default principle."""
+    classifier = FailureClassifier()
+
+    class SomeFutureAutomationError(AutomationError):
+        pass
+
+    assert classifier.classify(AutomationError("x")) == FailureClassification.PERMANENT
+    assert classifier.classify(SomeFutureAutomationError("x")) == FailureClassification.PERMANENT
 
 
 def test_unknown_exception_type_defaults_to_permanent() -> None:

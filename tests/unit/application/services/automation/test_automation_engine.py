@@ -21,6 +21,7 @@ from qa_servicenow_assistant.application.services.automation.automation_engine i
 )
 from qa_servicenow_assistant.domain.exceptions.automation import (
     ElementNotActionableError,
+    InvalidUploadFileError,
 )
 from qa_servicenow_assistant.domain.value_objects.configuration import (
     BrowserConfiguration,
@@ -220,3 +221,16 @@ def test_failure_is_logged_and_reraised() -> None:
 
     assert len(log_port.error_calls) == 1
     assert log_port.info_calls == []  # never logs "completed" on failure
+
+
+def test_invalid_upload_file_error_is_logged_and_reraised() -> None:
+    error = InvalidUploadFileError("operation=upload_file file_path=\"x\": file not found")
+    executor = FakeAutomationExecutor(error_to_raise=error)
+    log_port = FakeLogPort()
+    engine = AutomationEngine(executor, log_port)
+
+    with pytest.raises(InvalidUploadFileError):
+        engine.upload_file("page", make_selector(), "/tmp/does-not-exist.png")
+
+    assert len(log_port.error_calls) == 1
+    assert log_port.info_calls == []

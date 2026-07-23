@@ -18,7 +18,9 @@ not retried - rather than assumed safe to retry.
 
 from __future__ import annotations
 
-from qa_servicenow_assistant.domain.exceptions.automation import AutomationError
+from qa_servicenow_assistant.domain.exceptions.automation import (
+    ElementNotActionableError,
+)
 from qa_servicenow_assistant.domain.exceptions.browser import (
     BrowserError,
     BrowserNotStartedError,
@@ -46,14 +48,17 @@ _DEFAULT_CLASSIFICATIONS: dict[type[Exception], FailureClassification] = {
     # Ambiguity is a registration/data problem; retrying the same DOM will
     # not make it unambiguous.
     AmbiguousFrameError: FailureClassification.PERMANENT,
-    # Automation Engine correction: ElementNotActionableError ("elemento
-    # temporariamente indisponivel") and AutomationCommunicationError
-    # ("perda momentanea de conectividade"/"falha temporaria do
-    # navegador") are exactly the SAD 19.6 TRANSIENT examples quoted
-    # above - covered here via the AutomationError base so an external
-    # Retry Engine (Workflow Engine's, per step) actually retries them
-    # instead of defaulting to PERMANENT as an unregistered type would.
-    AutomationError: FailureClassification.TRANSIENT,
+    # SAD 19.6 - "elemento temporariamente indisponivel"/"timeout de
+    # carregamento". Registered on the SPECIFIC subclass, not the
+    # AutomationError base: a blanket base-class registration would make
+    # every future/unregistered Automation Engine exception default to
+    # TRANSIENT via MRO, inverting this classifier's own safe-by-default
+    # principle (see docstring above). AutomationCommunicationError is
+    # deliberately left unregistered/PERMANENT - it bundles genuinely
+    # permanent causes (malformed selector, wrong element type) with
+    # possibly-transient ones (lost session) that Playwright's generic
+    # Error class does not let us tell apart reliably.
+    ElementNotActionableError: FailureClassification.TRANSIENT,
 }
 
 

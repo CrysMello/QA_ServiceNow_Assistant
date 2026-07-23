@@ -31,11 +31,19 @@ Deliberate scope boundaries, documented rather than silently absent:
 
 Correction (post-Prompt 20 review): select_option/upload_file accept a
 single value/path or a sequence of them (single- and multi-select/
-multi-file inputs); AutomationError is registered as TRANSIENT in
-FailureClassifier's default registry, and every raised exception message
-now embeds operation/selector/timeout_ms - both needed for an external
-Retry Engine (Workflow Engine's, per step) to actually retry a
-transient automation failure and to log it meaningfully when it does.
+multi-file inputs). FailureClassifier registration was revised twice:
+an initial "AutomationError base -> TRANSIENT" registration was reverted
+because it would make every future/unregistered Automation Engine
+exception default to TRANSIENT via MRO, inverting the classifier's own
+safe-by-default principle. Only ElementNotActionableError is registered
+TRANSIENT explicitly; AutomationCommunicationError and the new
+InvalidUploadFileError (raised for a missing/empty/nonexistent upload
+path, before any Playwright call) are deliberately left unregistered,
+defaulting to PERMANENT - see domain/exceptions/automation.py for the
+full rationale. Every raised exception message embeds
+operation/selector/timeout_ms as predictable key=value pairs, needed for
+an external Retry Engine (Workflow Engine's, per step) to log a failure
+meaningfully when it retries (or gives up on) it.
 """
 
 from __future__ import annotations

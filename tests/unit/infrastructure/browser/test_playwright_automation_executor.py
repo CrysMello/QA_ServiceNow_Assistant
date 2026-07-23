@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -12,6 +13,7 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from qa_servicenow_assistant.domain.exceptions.automation import (
     AutomationCommunicationError,
     ElementNotActionableError,
+    InvalidUploadFileError,
 )
 from qa_servicenow_assistant.domain.value_objects.selector import Selector
 from qa_servicenow_assistant.infrastructure.browser.playwright_automation_executor import (
@@ -119,24 +121,86 @@ def test_select_option_accepts_multiple_values(executor: PlaywrightAutomationExe
     assert locator.calls == [("select_option", (["low", "high"],), {"timeout": 5_000})]
 
 
-def test_upload_file_passes_path_through(executor: PlaywrightAutomationExecutor) -> None:
+def test_upload_file_passes_path_through(executor: PlaywrightAutomationExecutor, tmp_path: Path) -> None:
+    evidence = tmp_path / "evidence.png"
+    evidence.write_bytes(b"fake-png-bytes")
     locator = FakeLocator()
     page = FakePage(locator)
 
-    executor.upload_file(page, make_selector(), "/tmp/evidence.png", timeout_ms=5_000)
+    executor.upload_file(page, make_selector(), str(evidence), timeout_ms=5_000)
 
-    assert locator.calls == [("set_input_files", ("/tmp/evidence.png",), {"timeout": 5_000})]
+    assert locator.calls == [("set_input_files", (str(evidence),), {"timeout": 5_000})]
 
 
-def test_upload_file_accepts_multiple_paths(executor: PlaywrightAutomationExecutor) -> None:
+def test_upload_file_accepts_multiple_paths(executor: PlaywrightAutomationExecutor, tmp_path: Path) -> None:
+    first = tmp_path / "a.png"
+    second = tmp_path / "b.png"
+    first.write_bytes(b"1")
+    second.write_bytes(b"2")
     locator = FakeLocator()
     page = FakePage(locator)
 
-    executor.upload_file(page, make_selector(), ["/tmp/a.png", "/tmp/b.png"], timeout_ms=5_000)
+    executor.upload_file(page, make_selector(), [str(first), str(second)], timeout_ms=5_000)
 
     assert locator.calls == [
-        ("set_input_files", (["/tmp/a.png", "/tmp/b.png"],), {"timeout": 5_000})
+        ("set_input_files", ([str(first), str(second)],), {"timeout": 5_000})
     ]
+
+
+@pytest.mark.parametrize("bad_path", [None, "", [], ()])
+def test_upload_file_rejects_missing_or_empty_path_without_calling_playwright(
+    executor: PlaywrightAutomationExecutor, bad_path: Any
+) -> None:
+    locator = FakeLocator()
+    page = FakePage(locator)
+
+    with pytest.raises(InvalidUploadFileError):
+        executor.upload_file(page, make_selector(), bad_path, timeout_ms=5_000)
+
+    assert locator.calls == []  # Playwright is never touched
+    assert page.locator_calls == []  # not even page.locator() is called
+
+
+def test_upload_file_rejects_nonexistent_path_without_calling_playwright(
+    executor: PlaywrightAutomationExecutor, tmp_path: Path
+) -> None:
+    locator = FakeLocator()
+    page = FakePage(locator)
+    missing = tmp_path / "does_not_exist.png"
+
+    with pytest.raises(InvalidUploadFileError, match="not found"):
+        executor.upload_file(page, make_selector(), str(missing), timeout_ms=5_000)
+
+    assert locator.calls == []
+
+
+def test_upload_file_rejects_if_any_path_in_a_sequence_is_missing(
+    executor: PlaywrightAutomationExecutor, tmp_path: Path
+) -> None:
+    existing = tmp_path / "exists.png"
+    existing.write_bytes(b"1")
+    missing = tmp_path / "does_not_exist.png"
+    locator = FakeLocator()
+    page = FakePage(locator)
+
+    with pytest.raises(InvalidUploadFileError):
+        executor.upload_file(page, make_selector(), [str(existing), str(missing)], timeout_ms=5_000)
+
+    assert locator.calls == []
+
+
+def test_upload_file_rejects_empty_string_entry_within_a_sequence(
+    executor: PlaywrightAutomationExecutor, tmp_path: Path
+) -> None:
+    existing = tmp_path / "exists.png"
+    existing.write_bytes(b"1")
+    locator = FakeLocator()
+    page = FakePage(locator)
+
+    with pytest.raises(InvalidUploadFileError):
+        executor.upload_file(page, make_selector(), [str(existing), ""], timeout_ms=5_000)
+
+    assert locator.calls == []
 
 
 def test_press_key_passes_key_through(executor: PlaywrightAutomationExecutor) -> None:
@@ -198,10 +262,10 @@ def test_element_not_actionable_error_carries_operation_selector_and_timeout_con
         executor.fill(page, make_selector("#short_description"), "value", timeout_ms=500)
 
     message = str(excinfo.value)
-    assert "fill" in message
-    assert "#short_description" in message
-    assert "id" in message  # selector.strategy
-    assert "500ms" in message
+    assert "operation=fill" in message
+    assert 'selector="#short_description"' in message
+    assert "strategy=id" in message
+    assert "timeout_ms=500" in message
 
 
 def test_communication_error_carries_operation_selector_and_timeout_context(
@@ -214,7 +278,7 @@ def test_communication_error_carries_operation_selector_and_timeout_context(
         executor.check(page, make_selector("#agree"), timeout_ms=500)
 
     message = str(excinfo.value)
-    assert "check" in message
-    assert "#agree" in message
-    assert "id" in message
-    assert "500" in message
+    assert "operation=check" in message
+    assert 'selector="#agree"' in message
+    assert "strategy=id" in message
+    assert "timeout_ms=500" in message

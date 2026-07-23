@@ -18,6 +18,7 @@ from qa_servicenow_assistant.application.services.automation.automation_engine i
 )
 from qa_servicenow_assistant.domain.exceptions.automation import (
     ElementNotActionableError,
+    InvalidUploadFileError,
 )
 from qa_servicenow_assistant.domain.value_objects.configuration import (
     BrowserConfiguration,
@@ -184,3 +185,26 @@ def test_select_option_and_upload_file_accept_multiple_values(tmp_path: Path) ->
         assert uploaded_names == ["one.txt", "two.txt"]
     finally:
         browser_manager.stop()
+
+
+def test_upload_file_with_nonexistent_path_raises_before_touching_playwright(tmp_path: Path) -> None:
+    log_port = RecordingLogPort()
+    browser_manager = PlaywrightBrowserManager(BrowserConfiguration(), log_port)
+    engine = AutomationEngine(PlaywrightAutomationExecutor(), log_port)
+    missing_file = tmp_path / "does_not_exist.png"
+
+    browser_manager.start()
+    try:
+        page = browser_manager.new_page()
+        page.set_content(_FORM_HTML)
+
+        with pytest.raises(InvalidUploadFileError, match="not found"):
+            engine.upload_file(page, selector("#file-input"), str(missing_file), timeout_ms=2_000)
+
+        # Playwright was never reached: the input's file list stays empty.
+        uploaded_count = page.locator("#file-input").evaluate("el => el.files.length")
+        assert uploaded_count == 0
+    finally:
+        browser_manager.stop()
+
+    assert "Automation action failed" in log_port.messages

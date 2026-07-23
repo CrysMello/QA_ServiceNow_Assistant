@@ -26,7 +26,9 @@ class AutomationExecutorPort(ABC):
     """Contract implemented by infrastructure adapters that perform real
     UI actions. Every method raises ElementNotActionableError or
     AutomationCommunicationError on failure (SAD 13.8) - never a bare
-    exception (AI Coding Standards Sec.11)."""
+    exception (AI Coding Standards Sec.11). upload_file additionally
+    raises InvalidUploadFileError when a given path is missing, empty or
+    does not exist, before any Playwright call is made."""
 
     @abstractmethod
     def click(self, page: Any, selector: Selector, *, timeout_ms: int) -> None:
@@ -61,7 +63,10 @@ class AutomationExecutorPort(ABC):
     @abstractmethod
     def upload_file(self, page: Any, selector: Selector, file_path: _OneOrMany, *, timeout_ms: int) -> None:
         """file_path accepts a single path or a sequence of them, for both
-        single-file and multi-file (<input type="file" multiple>) inputs."""
+        single-file and multi-file (<input type="file" multiple>) inputs.
+        Raises InvalidUploadFileError (PERMANENT - never retried) if
+        file_path is missing/empty or any entry does not point to an
+        existing file."""
         raise NotImplementedError
 
     @abstractmethod
