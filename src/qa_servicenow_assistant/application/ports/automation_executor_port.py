@@ -15,9 +15,11 @@ element to target, only acts on selector.value.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Sequence, Union
 
 from qa_servicenow_assistant.domain.value_objects.selector import Selector
+
+_OneOrMany = Union[str, Sequence[str]]
 
 
 class AutomationExecutorPort(ABC):
@@ -43,7 +45,9 @@ class AutomationExecutorPort(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def select_option(self, page: Any, selector: Selector, value: str, *, timeout_ms: int) -> None:
+    def select_option(self, page: Any, selector: Selector, value: _OneOrMany, *, timeout_ms: int) -> None:
+        """value accepts a single option value or a sequence of them, for
+        both single-select and multi-select (<select multiple>) elements."""
         raise NotImplementedError
 
     @abstractmethod
@@ -55,7 +59,9 @@ class AutomationExecutorPort(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def upload_file(self, page: Any, selector: Selector, file_path: str, *, timeout_ms: int) -> None:
+    def upload_file(self, page: Any, selector: Selector, file_path: _OneOrMany, *, timeout_ms: int) -> None:
+        """file_path accepts a single path or a sequence of them, for both
+        single-file and multi-file (<input type="file" multiple>) inputs."""
         raise NotImplementedError
 
     @abstractmethod

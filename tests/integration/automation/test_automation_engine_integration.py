@@ -41,6 +41,12 @@ _FORM_HTML = """
 </select>
 <input id="agree" type="checkbox" />
 <input id="file-input" type="file" />
+<select id="tags" multiple>
+  <option value="a">A</option>
+  <option value="b">B</option>
+  <option value="c">C</option>
+</select>
+<input id="multi-file-input" type="file" multiple />
 <div id="hover-target" onmouseover="this.innerText='hovered'">Hover me</div>
 <input id="key-field" type="text" />
 <div id="result"></div>
@@ -146,3 +152,35 @@ def test_missing_element_raises_element_not_actionable_error() -> None:
         browser_manager.stop()
 
     assert "Automation action failed" in log_port.messages
+
+
+def test_select_option_and_upload_file_accept_multiple_values(tmp_path: Path) -> None:
+    log_port = RecordingLogPort()
+    browser_manager = PlaywrightBrowserManager(BrowserConfiguration(), log_port)
+    engine = AutomationEngine(PlaywrightAutomationExecutor(), log_port)
+
+    first_file = tmp_path / "one.txt"
+    first_file.write_text("1", encoding="utf-8")
+    second_file = tmp_path / "two.txt"
+    second_file.write_text("2", encoding="utf-8")
+
+    browser_manager.start()
+    try:
+        page = browser_manager.new_page()
+        page.set_content(_FORM_HTML)
+
+        engine.select_option(page, selector("#tags"), ["a", "c"], timeout_ms=2_000)
+        selected = page.locator("#tags").evaluate(
+            "el => Array.from(el.selectedOptions).map(o => o.value)"
+        )
+        assert selected == ["a", "c"]
+
+        engine.upload_file(
+            page, selector("#multi-file-input"), [str(first_file), str(second_file)], timeout_ms=2_000
+        )
+        uploaded_names = page.locator("#multi-file-input").evaluate(
+            "el => Array.from(el.files).map(f => f.name)"
+        )
+        assert uploaded_names == ["one.txt", "two.txt"]
+    finally:
+        browser_manager.stop()

@@ -7,8 +7,8 @@ raise, this classifier holds a registry keyed by exception TYPE, walked
 via the error's MRO so a more specific registration (e.g.
 AmbiguousFrameError: PERMANENT) correctly overrides a broader one
 registered on an ancestor (e.g. FrameError: TRANSIENT). Future modules
-(Automation Engine, Checkpoint Engine, etc.) can register their own
-exception types via register() without modifying this class.
+can register their own exception types via register() without modifying
+this class.
 
 Unknown/unregistered exception types default to PERMANENT: SAD 19.1
 explicitly warns against "mascarar falhas permanentes", so an exception
@@ -18,6 +18,7 @@ not retried - rather than assumed safe to retry.
 
 from __future__ import annotations
 
+from qa_servicenow_assistant.domain.exceptions.automation import AutomationError
 from qa_servicenow_assistant.domain.exceptions.browser import (
     BrowserError,
     BrowserNotStartedError,
@@ -45,6 +46,14 @@ _DEFAULT_CLASSIFICATIONS: dict[type[Exception], FailureClassification] = {
     # Ambiguity is a registration/data problem; retrying the same DOM will
     # not make it unambiguous.
     AmbiguousFrameError: FailureClassification.PERMANENT,
+    # Automation Engine correction: ElementNotActionableError ("elemento
+    # temporariamente indisponivel") and AutomationCommunicationError
+    # ("perda momentanea de conectividade"/"falha temporaria do
+    # navegador") are exactly the SAD 19.6 TRANSIENT examples quoted
+    # above - covered here via the AutomationError base so an external
+    # Retry Engine (Workflow Engine's, per step) actually retries them
+    # instead of defaulting to PERMANENT as an unregistered type would.
+    AutomationError: FailureClassification.TRANSIENT,
 }
 
 

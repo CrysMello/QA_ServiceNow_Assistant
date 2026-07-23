@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from qa_servicenow_assistant.domain.exceptions.automation import (
+    AutomationCommunicationError,
+    AutomationError,
+    ElementNotActionableError,
+)
 from qa_servicenow_assistant.domain.exceptions.browser import (
     BrowserDataCollectionError,
     BrowserLaunchError,
@@ -59,6 +64,14 @@ def test_ambiguous_frame_error_is_permanent_despite_being_a_frame_error() -> Non
     classifier = FailureClassifier()
 
     assert classifier.classify(AmbiguousFrameError("x")) == FailureClassification.PERMANENT
+
+
+def test_automation_errors_are_transient() -> None:
+    classifier = FailureClassifier()
+
+    assert classifier.classify(AutomationError("x")) == FailureClassification.TRANSIENT
+    assert classifier.classify(ElementNotActionableError("x")) == FailureClassification.TRANSIENT
+    assert classifier.classify(AutomationCommunicationError("x")) == FailureClassification.TRANSIENT
 
 
 def test_unknown_exception_type_defaults_to_permanent() -> None:

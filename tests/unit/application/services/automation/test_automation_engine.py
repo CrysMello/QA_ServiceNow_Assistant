@@ -148,6 +148,17 @@ def test_select_option_passes_value_through_to_executor() -> None:
     ]
 
 
+def test_select_option_accepts_multiple_values() -> None:
+    executor = FakeAutomationExecutor()
+    engine = AutomationEngine(executor, FakeLogPort())
+
+    engine.select_option("page", make_selector(), ["low", "high"])
+
+    assert executor.calls == [
+        ("select_option", ("page", make_selector(), ["low", "high"]), {"timeout_ms": 30_000})
+    ]
+
+
 def test_upload_file_passes_path_through_to_executor() -> None:
     executor = FakeAutomationExecutor()
     engine = AutomationEngine(executor, FakeLogPort())
@@ -156,6 +167,21 @@ def test_upload_file_passes_path_through_to_executor() -> None:
 
     assert executor.calls == [
         ("upload_file", ("page", make_selector(), "/tmp/file.png"), {"timeout_ms": 30_000})
+    ]
+
+
+def test_upload_file_accepts_multiple_paths() -> None:
+    executor = FakeAutomationExecutor()
+    engine = AutomationEngine(executor, FakeLogPort())
+
+    engine.upload_file("page", make_selector(), ["/tmp/a.png", "/tmp/b.png"])
+
+    assert executor.calls == [
+        (
+            "upload_file",
+            ("page", make_selector(), ["/tmp/a.png", "/tmp/b.png"]),
+            {"timeout_ms": 30_000},
+        )
     ]
 
 

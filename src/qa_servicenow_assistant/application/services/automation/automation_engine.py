@@ -28,11 +28,19 @@ Deliberate scope boundaries, documented rather than silently absent:
   correto de pagina e frame") happens upstream via Frame Resolver; this
   engine receives whatever Page/Frame-like object the caller already
   resolved.
+
+Correction (post-Prompt 20 review): select_option/upload_file accept a
+single value/path or a sequence of them (single- and multi-select/
+multi-file inputs); AutomationError is registered as TRANSIENT in
+FailureClassifier's default registry, and every raised exception message
+now embeds operation/selector/timeout_ms - both needed for an external
+Retry Engine (Workflow Engine's, per step) to actually retry a
+transient automation failure and to log it meaningfully when it does.
 """
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, Sequence, Union
 
 from qa_servicenow_assistant.application.ports.automation_executor_port import (
     AutomationExecutorPort,
@@ -43,6 +51,8 @@ from qa_servicenow_assistant.domain.value_objects.configuration import (
     BrowserConfiguration,
 )
 from qa_servicenow_assistant.domain.value_objects.selector import Selector
+
+_OneOrMany = Union[str, Sequence[str]]
 
 
 class AutomationEngine:
@@ -76,7 +86,7 @@ class AutomationEngine:
         self._run("clear", page, selector, timeout_ms, self._executor.clear)
 
     def select_option(
-        self, page: Any, selector: Selector, value: str, *, timeout_ms: int | None = None
+        self, page: Any, selector: Selector, value: _OneOrMany, *, timeout_ms: int | None = None
     ) -> None:
         self._run(
             "select_option", page, selector, timeout_ms,
@@ -90,7 +100,7 @@ class AutomationEngine:
         self._run("uncheck", page, selector, timeout_ms, self._executor.uncheck)
 
     def upload_file(
-        self, page: Any, selector: Selector, file_path: str, *, timeout_ms: int | None = None
+        self, page: Any, selector: Selector, file_path: _OneOrMany, *, timeout_ms: int | None = None
     ) -> None:
         self._run(
             "upload_file", page, selector, timeout_ms,

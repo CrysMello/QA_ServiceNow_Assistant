@@ -110,6 +110,15 @@ def test_select_option_passes_value_through(executor: PlaywrightAutomationExecut
     assert locator.calls == [("select_option", ("high",), {"timeout": 5_000})]
 
 
+def test_select_option_accepts_multiple_values(executor: PlaywrightAutomationExecutor) -> None:
+    locator = FakeLocator()
+    page = FakePage(locator)
+
+    executor.select_option(page, make_selector(), ["low", "high"], timeout_ms=5_000)
+
+    assert locator.calls == [("select_option", (["low", "high"],), {"timeout": 5_000})]
+
+
 def test_upload_file_passes_path_through(executor: PlaywrightAutomationExecutor) -> None:
     locator = FakeLocator()
     page = FakePage(locator)
@@ -117,6 +126,17 @@ def test_upload_file_passes_path_through(executor: PlaywrightAutomationExecutor)
     executor.upload_file(page, make_selector(), "/tmp/evidence.png", timeout_ms=5_000)
 
     assert locator.calls == [("set_input_files", ("/tmp/evidence.png",), {"timeout": 5_000})]
+
+
+def test_upload_file_accepts_multiple_paths(executor: PlaywrightAutomationExecutor) -> None:
+    locator = FakeLocator()
+    page = FakePage(locator)
+
+    executor.upload_file(page, make_selector(), ["/tmp/a.png", "/tmp/b.png"], timeout_ms=5_000)
+
+    assert locator.calls == [
+        ("set_input_files", (["/tmp/a.png", "/tmp/b.png"],), {"timeout": 5_000})
+    ]
 
 
 def test_press_key_passes_key_through(executor: PlaywrightAutomationExecutor) -> None:
@@ -166,3 +186,35 @@ def test_generic_playwright_error_is_wrapped_as_communication_error(
 
     with pytest.raises(AutomationCommunicationError, match="closed"):
         executor.click(page, make_selector(), timeout_ms=500)
+
+
+def test_element_not_actionable_error_carries_operation_selector_and_timeout_context(
+    executor: PlaywrightAutomationExecutor,
+) -> None:
+    locator = FakeLocator(error_to_raise=PlaywrightTimeoutError("Timeout 500ms exceeded"))
+    page = FakePage(locator)
+
+    with pytest.raises(ElementNotActionableError) as excinfo:
+        executor.fill(page, make_selector("#short_description"), "value", timeout_ms=500)
+
+    message = str(excinfo.value)
+    assert "fill" in message
+    assert "#short_description" in message
+    assert "id" in message  # selector.strategy
+    assert "500ms" in message
+
+
+def test_communication_error_carries_operation_selector_and_timeout_context(
+    executor: PlaywrightAutomationExecutor,
+) -> None:
+    locator = FakeLocator(error_to_raise=PlaywrightError("Target page, context or browser has been closed"))
+    page = FakePage(locator)
+
+    with pytest.raises(AutomationCommunicationError) as excinfo:
+        executor.check(page, make_selector("#agree"), timeout_ms=500)
+
+    message = str(excinfo.value)
+    assert "check" in message
+    assert "#agree" in message
+    assert "id" in message
+    assert "500" in message
